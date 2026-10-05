@@ -1,0 +1,24 @@
+# Python environments and generated files
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Test and lint output
+.pytest_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Packaging and smoke-test screenshots
+build/
+dist/
+preview/
+preview-native/
+
+# Local configuration and OS files
+.env
+.env.*
+!.env.example
+.DS_Store

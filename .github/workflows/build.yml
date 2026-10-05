@@ -1,0 +1,92 @@
+name: Build desktop apps
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: macos-arm64
+          - runner: macos-15-intel
+            target: macos-x86_64
+          - runner: ubuntu-22.04
+            target: linux-x86_64
+    env:
+      QT_QPA_PLATFORM: offscreen
+      BUILD_TARGET: ${{ matrix.target }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Install Linux desktop libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 libxcb-cursor0 libxkbcommon-x11-0 \
+            libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 \
+            libxcb-xinerama0 fonts-dejavu-core
+
+      - name: Install locked dependencies
+        run: uv sync --locked
+
+      - name: Check code and run tests
+        run: |
+          uv run --no-sync ruff check .
+          uv run --no-sync ruff format --check .
+          uv run --no-sync pytest -q
+
+      - name: Build standalone app
+        run: uv run --no-sync pyinstaller --noconfirm AlbumJournal.spec
+
+      - name: Check packaged macOS app
+        if: runner.os == 'macOS'
+        run: '"dist/Album Journal.app/Contents/MacOS/AlbumJournal" --smoke-test'
+
+      - name: Check packaged Linux app
+        if: runner.os == 'Linux'
+        run: dist/AlbumJournal/AlbumJournal --smoke-test
+
+      # Archive first to preserve executable permissions and bundle symlinks.
+      - name: Archive macOS app
+        if: runner.os == 'macOS'
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            "dist/Album Journal.app" "dist/album-journal-${BUILD_TARGET}.zip"
+
+      - name: Archive Linux app
+        if: runner.os == 'Linux'
+        run: tar -czf "dist/album-journal-${BUILD_TARGET}.tar.gz" -C dist AlbumJournal
+
+      - name: Upload downloadable app
+        uses: actions/upload-artifact@v7
+        with:
+          name: album-journal-${{ matrix.target }}
+          path: |
+            dist/album-journal-*.zip
+            dist/album-journal-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

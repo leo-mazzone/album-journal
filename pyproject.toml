@@ -1,0 +1,26 @@
+[project]
+name = "album-journal"
+version = "0.1.0"
+description = "A small, offline-first desktop album journal"
+requires-python = ">=3.12,<3.14"
+dependencies = ["PySide6>=6.8,<7", "ytmusicapi>=1.12,<2", "requests>=2.32,<3", "filelock>=3.16,<4"]
+
+[project.scripts]
+album-journal = "album_journal.app:main"
+
+[dependency-groups]
+dev = ["pytest>=8,<10", "pytest-qt>=4.4,<5", "pyinstaller>=6.11,<7", "ruff>=0.11,<1"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
